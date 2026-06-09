@@ -11,15 +11,12 @@ class YouTubeToAudioApp:
         self.root.geometry("500x250")
         self.root.resizable(False, False)
 
-        # Variables
         self.target_dir = tk.StringVar(value=os.path.expanduser("~"))
 
-        # UI Setup
         tk.Label(root, text="YouTube URL:", font=("Arial", 11, "bold")).pack(pady=(15, 2))
         self.url_entry = tk.Entry(root, width=55, font=("Arial", 10))
         self.url_entry.pack(pady=5)
 
-        # Storage Selection
         tk.Label(root, text="Save Target (Select your USB Drive):", font=("Arial", 11, "bold")).pack(pady=(10, 2))
         
         dir_frame = tk.Frame(root)
@@ -31,17 +28,14 @@ class YouTubeToAudioApp:
         browse_btn = tk.Button(dir_frame, text="Browse USB", command=self.browse_directory)
         browse_btn.pack(side=tk.LEFT)
 
-        # Download Button
         self.download_btn = tk.Button(root, text="Convert & Save Audio", bg="#2ecc71", fg="white", 
                                       font=("Arial", 12, "bold"), command=self.start_download_thread, height=2)
         self.download_btn.pack(pady=20)
 
-        # Status Label
         self.status_label = tk.Label(root, text="", fg="blue")
         self.status_label.pack()
 
     def browse_directory(self):
-        # Open file dialog to choose a folder (like your external USB drive)
         selected_dir = filedialog.askdirectory(initialdir=self.target_dir.get(), title="Select USB Drive or Folder")
         if selected_dir:
             self.target_dir.set(selected_dir)
@@ -52,31 +46,34 @@ class YouTubeToAudioApp:
             messagebox.showerror("Error", "Please enter a valid YouTube URL.")
             return
         
-        # Disable button during download so user doesn't click twice
         self.download_btn.config(state=tk.DISABLED, bg="#95a5a6")
         self.status_label.config(text="Processing... please wait.", fg="orange")
         
-        # Run in background thread to keep UI from freezing
         threading.Thread(target=self.download_audio, args=(url,), daemon=True).start()
 
-    def download_audio(self, url):
-        output_path = os.path.join(self.target_dir.get(), '%(title)s.%(ext)s')
+        def download_audio(self, url):
+        # We enforce the .mp3 extension framework template
+            output_path = os.path.join(self.target_dir.get(), '%(title)s.%(ext)s')
         
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': output_path,
-            # If you have ffmpeg installed, uncomment the lines below to enforce strict .mp3 conversion
-            # 'postprocessors': [{
-            #     'key': 'FFmpegExtractAudio',
-            #     'preferredcodec': 'mp3',
-            #     'preferredquality': '192',
-            # }],
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': output_path,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+            }],
         }
 
         try:
             with YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             
+            self.update_ui_success("Success! MP3 saved to your drive.")
+        except Exception as e:
+            self.update_ui_success(f"Error processing audio.", failed=True)
+
+               
             # UI Updates must be done safely from main thread or handled simply
             self.update_ui_success("Success! Audio saved to your drive.")
         except Exception as e:
